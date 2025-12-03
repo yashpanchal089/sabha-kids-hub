@@ -16,9 +16,7 @@ export function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <NavLink to="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary shadow-soft">
-              <span className="text-xl">🙏</span>
-            </div>
+            <img src="/logo.png" alt="Adarsh Nagar Mandal" className="h-10 w-10 rounded-xl shadow-soft object-cover" />
             <div className="hidden sm:block">
               <h1 className="font-heading text-lg font-bold text-foreground">
                 Adarsh Nagar
