@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,12 +111,12 @@ export default function Index() {
               <p className="text-muted-foreground mb-4">
                 Register new kids for the weekly Sabha sessions.
               </p>
-              <a
-                href="/register"
+              <NavLink
+                to="/register"
                 className="btn-primary inline-flex items-center justify-center"
               >
                 Register New Kid
-              </a>
+              </NavLink>
             </CardContent>
           </Card>
 
@@ -130,12 +131,12 @@ export default function Index() {
               <p className="text-muted-foreground mb-4">
                 Record today's attendance for all registered kids.
               </p>
-              <a
-                href="/attendance"
+              <NavLink
+                to="/attendance"
                 className="btn-primary inline-flex items-center justify-center"
               >
                 Mark Attendance
-              </a>
+              </NavLink>
             </CardContent>
           </Card>
         </div>

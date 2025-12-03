@@ -4,7 +4,8 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: "/sabha-kids-hub/",
+  // Use short root path in dev, GitHub Pages project path in production
+  base: mode === "production" ? "/sabha-kids-hub/" : "/",
   server: {
     host: "::",
     port: 8081,

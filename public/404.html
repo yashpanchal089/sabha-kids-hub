@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Redirecting…</title>
+    <meta http-equiv="refresh" content="0; URL=/sabha-kids-hub/" />
+    <script>
+      // SPA redirect: preserve path and query when using project pages
+      (function() {
+        var base = '/sabha-kids-hub';
+        var path = window.location.pathname.replace(/^\/sabha-kids-hub/, '');
+        var newUrl = base + '/#' + path + window.location.search + window.location.hash;
+        // Fallback to index with hash routing
+        window.location.replace(base + '/');
+      })();
+    </script>
+  </head>
+  <body>
+    Redirecting…
+  </body>
+</html>
