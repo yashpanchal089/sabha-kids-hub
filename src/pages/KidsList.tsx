@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -19,7 +22,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Users, Search, Filter, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Users, Search, Filter, Loader2, Eye, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface Kid {
   id: string;
@@ -37,6 +42,18 @@ export default function KidsList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [standardFilter, setStandardFilter] = useState<string>("all");
   const [schoolFilter, setSchoolFilter] = useState<string>("all");
+  const [viewKid, setViewKid] = useState<Kid | null>(null);
+  const [editKid, setEditKid] = useState<Kid | null>(null);
+  const [editForm, setEditForm] = useState({
+    full_name: "",
+    standard: "",
+    age: "",
+    school_name: "",
+    father_phone: "",
+    mother_phone: "",
+    address: "",
+  });
+  const queryClient = useQueryClient();
 
   const { data: kids = [], isLoading } = useQuery({
     queryKey: ["kids"],
@@ -64,6 +81,83 @@ export default function KidsList() {
       schoolFilter === "all" || kid.school_name === schoolFilter;
     return matchesSearch && matchesStandard && matchesSchool;
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (kidId: string) => {
+      const { error } = await supabase.from("kids").delete().eq("id", kidId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["kids"] });
+      toast.success("Kid deleted successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete kid");
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Kid> }) => {
+      const { error } = await supabase
+        .from("kids")
+        .update({
+          full_name: data.full_name,
+          standard: data.standard,
+          age: data.age,
+          school_name: data.school_name,
+          father_phone: data.father_phone,
+          mother_phone: data.mother_phone,
+          address: data.address ?? null,
+        } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["kids"] });
+      toast.success("Kid updated successfully");
+      setEditKid(null);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update kid");
+    },
+  });
+
+  const openEdit = (kid: Kid) => {
+    setEditKid(kid);
+    setEditForm({
+      full_name: kid.full_name || "",
+      standard: kid.standard?.toString() || "",
+      age: kid.age?.toString() || "",
+      school_name: kid.school_name || "",
+      father_phone: kid.father_phone || "",
+      mother_phone: kid.mother_phone || "",
+      address: kid.address || "",
+    });
+  };
+
+  const handleEditChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const submitEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editKid) return;
+    updateMutation.mutate({
+      id: editKid.id,
+      data: {
+        full_name: editForm.full_name,
+        standard: editForm.standard ? parseInt(editForm.standard) : undefined,
+        age: editForm.age ? parseInt(editForm.age) : undefined,
+        school_name: editForm.school_name,
+        father_phone: editForm.father_phone,
+        mother_phone: editForm.mother_phone,
+        address: editForm.address || null,
+      },
+    });
+  };
 
   return (
     <Layout>
@@ -156,6 +250,7 @@ export default function KidsList() {
                       <TableHead className="hidden lg:table-cell">
                         Mother Phone
                       </TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -186,6 +281,37 @@ export default function KidsList() {
                         <TableCell className="hidden lg:table-cell text-muted-foreground">
                           {kid.mother_phone}
                         </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setViewKid(kid)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" /> View
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEdit(kid)}
+                            >
+                              <Pencil className="h-4 w-4 mr-1" /> Edit
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              disabled={deleteMutation.isPending}
+                              onClick={() => deleteMutation.mutate(kid.id)}
+                            >
+                              {deleteMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4 mr-1" />
+                              )}
+                              Delete
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -194,6 +320,92 @@ export default function KidsList() {
             )}
           </CardContent>
         </Card>
+
+        {/* View Dialog */}
+        <Dialog open={!!viewKid} onOpenChange={(open) => !open && setViewKid(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Kid Details</DialogTitle>
+            </DialogHeader>
+            {viewKid && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <p><span className="text-muted-foreground">Reg ID:</span> {viewKid.registration_id}</p>
+                  <p><span className="text-muted-foreground">Name:</span> {viewKid.full_name}</p>
+                  <p><span className="text-muted-foreground">Standard:</span> {viewKid.standard}</p>
+                  <p><span className="text-muted-foreground">Age:</span> {viewKid.age}</p>
+                  <p className="col-span-2"><span className="text-muted-foreground">School:</span> {viewKid.school_name}</p>
+                  <p><span className="text-muted-foreground">Father:</span> {viewKid.father_phone}</p>
+                  <p><span className="text-muted-foreground">Mother:</span> {viewKid.mother_phone}</p>
+                </div>
+                {viewKid.address && (
+                  <div>
+                    <p className="text-muted-foreground">Address:</p>
+                    <p>{viewKid.address}</p>
+                  </div>
+                )}
+            </div>
+            )}
+            <DialogFooter>
+              <Button onClick={() => setViewKid(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Dialog */}
+        <Dialog open={!!editKid} onOpenChange={(open) => !open && setEditKid(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Kid</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={submitEdit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="full_name">Full Name</Label>
+                <Input id="full_name" name="full_name" value={editForm.full_name} onChange={handleEditChange} className="input-styled" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="standard">Standard</Label>
+                  <Input id="standard" name="standard" type="number" min="1" max="12" value={editForm.standard} onChange={handleEditChange} className="input-styled" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="age">Age</Label>
+                  <Input id="age" name="age" type="number" min="1" max="20" value={editForm.age} onChange={handleEditChange} className="input-styled" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="school_name">School Name</Label>
+                <Input id="school_name" name="school_name" value={editForm.school_name} onChange={handleEditChange} className="input-styled" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="father_phone">Father's Phone</Label>
+                  <Input id="father_phone" name="father_phone" value={editForm.father_phone} onChange={handleEditChange} className="input-styled" maxLength={10} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="mother_phone">Mother's Phone</Label>
+                  <Input id="mother_phone" name="mother_phone" value={editForm.mother_phone} onChange={handleEditChange} className="input-styled" maxLength={10} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address">Address</Label>
+                <Textarea id="address" name="address" value={editForm.address} onChange={handleEditChange} className="input-styled min-h-[80px] resize-none" />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditKid(null)}>Cancel</Button>
+                <Button type="submit" disabled={updateMutation.isPending}>
+                  {updateMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
+                    </>
+                  ) : (
+                    <>Save Changes</>
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
