@@ -2,10 +2,8 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
-// https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  // Use short root path in dev, GitHub Pages project path in production
-  base: mode === "production" ? "/sabha-kids-hub/" : "/",
+export default defineConfig({
+  base: "/",   // ← IMPORTANT: Vercel requires root path only
   server: {
     host: "::",
     port: 8081,
@@ -17,4 +15,4 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-}));
+});
